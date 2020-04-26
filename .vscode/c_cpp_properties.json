@@ -12,9 +12,41 @@
             "defines": [
                 "_LANGUAGE_C",
                 "VERSION_US",
-                "NON_MATCHING",
                 "TARGET_N64",
-                "AVOID_UB",
+                "F3D_OLD"
+            ]
+        },
+        {
+            "name": "US GCC",
+            "includePath": [
+                "${workspaceFolder}",
+                "${workspaceFolder}/include",
+                "${workspaceFolder}/src",
+                "${workspaceFolder}/build/us",
+                "${workspaceFolder}/build/us/include"
+            ],
+            "defines": [
+                "_LANGUAGE_C",
+                "VERSION_US",
+                "TARGET_N64",
+                "F3D_OLD",
+                "NON_MATCHING",
+                "AVOID_UB"
+            ]
+        },
+        {
+            "name": "JP",
+            "includePath": [
+                "${workspaceFolder}",
+                "${workspaceFolder}/include",
+                "${workspaceFolder}/src",
+                "${workspaceFolder}/build/jp",
+                "${workspaceFolder}/build/jp/include"
+            ],
+            "defines": [
+                "_LANGUAGE_C",
+                "VERSION_JP",
+                "TARGET_N64",
                 "F3D_OLD"
             ]
         }

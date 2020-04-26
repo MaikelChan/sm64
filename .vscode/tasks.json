@@ -27,21 +27,21 @@
         {
             "label": "Build US",
             "type": "shell",
-            "command": "make VERSION=us OPT_FLAGS=-O2 COMPARE=0 -j8", // 8 jobs
+            "command": "make -j8 VERSION=us OPT_FLAGS=-O2 COMPARE=0",
             "group": "build",
             "problemMatcher": []
         },
         {
             "label": "Build US (GCC)",
             "type": "shell",
-            "command": "make VERSION=us OPT_FLAGS=-O2 COMPARE=0 COMPILER=gcc -j8", // 8 jobs
+            "command": "make -j8 VERSION=us OPT_FLAGS=-O2 COMPARE=0 COMPILER=gcc NON_MATCHING=1 AVOID_UB=1",
             "group": "build",
             "problemMatcher": []
         },
         {
             "label": "Build JP",
             "type": "shell",
-            "command": "make VERSION=jp OPT_FLAGS=-O2 COMPARE=0 -j8", // 8 jobs
+            "command": "make -j8 VERSION=jp OPT_FLAGS=-O2 COMPARE=0",
             "group": "build",
             "problemMatcher": []
         }
