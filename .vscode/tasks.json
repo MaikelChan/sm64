@@ -1,0 +1,49 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "options": {
+        "shell": {
+            "args": [ // Required to pass this argument to bash in order to read environment variables from .bashrc (QEMU_IRIX)
+                "-ic"
+            ]
+        }
+    },
+    "tasks": [
+        {
+            "label": "Clean",
+            "type": "shell",
+            "command": "make clean",
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "Clean (with assets)",
+            "type": "shell",
+            "command": "make distclean",
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "Build US",
+            "type": "shell",
+            "command": "make VERSION=us OPT_FLAGS=-O2 COMPARE=0 -j8", // 8 jobs
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "Build US (GCC)",
+            "type": "shell",
+            "command": "make VERSION=us OPT_FLAGS=-O2 COMPARE=0 COMPILER=gcc -j8", // 8 jobs
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "Build JP",
+            "type": "shell",
+            "command": "make VERSION=jp OPT_FLAGS=-O2 COMPARE=0 -j8", // 8 jobs
+            "group": "build",
+            "problemMatcher": []
+        }
+    ]
+}

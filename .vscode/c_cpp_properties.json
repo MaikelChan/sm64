@@ -1,0 +1,23 @@
+{
+    "configurations": [
+        {
+            "name": "US",
+            "includePath": [
+                "${workspaceFolder}",
+                "${workspaceFolder}/include",
+                "${workspaceFolder}/src",
+                "${workspaceFolder}/build/us",
+                "${workspaceFolder}/build/us/include"
+            ],
+            "defines": [
+                "_LANGUAGE_C",
+                "VERSION_US",
+                "NON_MATCHING",
+                "TARGET_N64",
+                "AVOID_UB",
+                "F3D_OLD"
+            ]
+        }
+    ],
+    "version": 4
+}
