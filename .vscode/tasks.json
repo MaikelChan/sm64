@@ -1,0 +1,61 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Clean (PC)",
+            "type": "shell",
+            "command": "make clean",
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "Clean (with assets) (PC)",
+            "type": "shell",
+            "command": "make distclean",
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "Build US (PC D3D11)",
+            "type": "shell",
+            "command": "make -j8 VERSION=us",
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "Build US (PC D3D11) (Debug)",
+            "type": "shell",
+            "command": "make -j8 OPT_FLAGS=-g VERSION=us",
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "Build US (PC D3D12)",
+            "type": "shell",
+            "command": "make -j8 VERSION=us ENABLE_DX12=1",
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "Build US (PC D3D12) (Debug)",
+            "type": "shell",
+            "command": "make -j8 OPT_FLAGS=-g VERSION=us ENABLE_DX12=1",
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "Build US (PC OpenGL)",
+            "type": "shell",
+            "command": "make -j8 VERSION=us ENABLE_OPENGL=1",
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "Build US (PC OpenGL) (Debug)",
+            "type": "shell",
+            "command": "make -j8 OPT_FLAGS=-g VERSION=us ENABLE_OPENGL=1",
+            "group": "build",
+            "problemMatcher": []
+        }
+    ]
+}
