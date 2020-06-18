@@ -29,6 +29,8 @@
 #define DECLARE_GFX_DXGI_FUNCTIONS
 #include "gfx_dxgi.h"
 
+#include "../resources_win/resources.h"
+
 #define WINCLASS_NAME L"N64GAME"
 #define GFX_API_NAME "DirectX"
 
@@ -281,8 +283,8 @@ static void gfx_dxgi_init(const char *game_name, bool start_in_fullscreen) {
     wcex.lpfnWndProc    = gfx_dxgi_wnd_proc;
     wcex.cbClsExtra     = 0;
     wcex.cbWndExtra     = 0;
-    wcex.hInstance      = nullptr;
-    wcex.hIcon          = nullptr;
+    wcex.hInstance      = GetModuleHandle(NULL);
+    wcex.hIcon          = LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_ICON)); 
     wcex.hCursor        = LoadCursor(nullptr, IDC_ARROW);
     wcex.hbrBackground  = (HBRUSH)GetStockObject(BLACK_BRUSH);
     wcex.lpszMenuName   = nullptr;
