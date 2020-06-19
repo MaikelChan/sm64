@@ -293,14 +293,21 @@ static void gfx_dxgi_init(const char *game_name, bool start_in_fullscreen) {
 
     ATOM winclass = RegisterClassExW(&wcex);
 
-
-    run_as_dpi_aware([&] () {
+    run_as_dpi_aware([&]() {
         // We need to be dpi aware when calculating the size
         RECT wr = {0, 0, DESIRED_SCREEN_WIDTH, DESIRED_SCREEN_HEIGHT};
         AdjustWindowRect(&wr, WS_OVERLAPPEDWINDOW, FALSE);
 
         dxgi.h_wnd = CreateWindowW(WINCLASS_NAME, w_title, WS_OVERLAPPEDWINDOW,
             CW_USEDEFAULT, 0, wr.right - wr.left, wr.bottom - wr.top, nullptr, nullptr, nullptr, nullptr);
+
+        // Center window
+
+        int screen_width = GetSystemMetrics(SM_CXSCREEN);
+        int screen_height = GetSystemMetrics(SM_CYSCREEN);
+        int xPos = (screen_width - wr.right) * 0.5;
+        int yPos = (screen_height - wr.bottom) * 0.5;
+        SetWindowPos(dxgi.h_wnd, 0, xPos, yPos, 0, 0, SWP_NOZORDER | SWP_NOSIZE);
     });
 
     load_dxgi_library();
