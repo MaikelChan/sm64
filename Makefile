@@ -23,6 +23,8 @@ TARGET_N64 ?= 0
 TARGET_WEB ?= 0
 # Compiler to use (ido or gcc)
 COMPILER ?= ido
+# Enable 3 point texture filtering. It recreates how textures look on a real N64
+THREE_POINT_FILTERING ?= 0
 
 # Automatic settings only for ports
 ifeq ($(TARGET_N64),0)
@@ -491,6 +493,10 @@ ifeq ($(ENABLE_DX12),1)
 endif
 
 GFX_CFLAGS += -DWIDESCREEN
+
+ifeq ($(THREE_POINT_FILTERING),1)
+  GFX_CFLAGS += -DTHREE_POINT_FILTERING
+endif
 
 CC_CHECK := $(CC) -fsyntax-only -fsigned-char $(INCLUDE_CFLAGS) -Wall -Wextra -Wno-format-security -D_LANGUAGE_C $(VERSION_CFLAGS) $(MATCH_CFLAGS) $(PLATFORM_CFLAGS) $(GFX_CFLAGS) $(GRUCODE_CFLAGS)
 CFLAGS := $(OPT_FLAGS) $(INCLUDE_CFLAGS) -D_LANGUAGE_C $(VERSION_CFLAGS) $(MATCH_CFLAGS) $(PLATFORM_CFLAGS) $(GFX_CFLAGS) $(GRUCODE_CFLAGS) -fno-strict-aliasing -fwrapv
