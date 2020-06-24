@@ -18,14 +18,14 @@
         {
             "label": "Build US (PC D3D11)",
             "type": "shell",
-            "command": "make -j8 VERSION=us",
+            "command": "make -j8 VERSION=us ENABLE_DX11=1 THREE_POINT_FILTERING=1",
             "group": "build",
             "problemMatcher": []
         },
         {
             "label": "Build US (PC D3D11) (Debug)",
             "type": "shell",
-            "command": "make -j8 OPT_FLAGS=-g VERSION=us",
+            "command": "make -j8 OPT_FLAGS=-g VERSION=us ENABLE_DX11=1 THREE_POINT_FILTERING=1",
             "group": "build",
             "problemMatcher": []
         },
@@ -46,14 +46,14 @@
         {
             "label": "Build US (PC OpenGL)",
             "type": "shell",
-            "command": "make -j8 VERSION=us ENABLE_OPENGL=1",
+            "command": "make -j8 VERSION=us ENABLE_OPENGL=1 THREE_POINT_FILTERING=1",
             "group": "build",
             "problemMatcher": []
         },
         {
             "label": "Build US (PC OpenGL) (Debug)",
             "type": "shell",
-            "command": "make -j8 OPT_FLAGS=-g VERSION=us ENABLE_OPENGL=1",
+            "command": "make -j8 OPT_FLAGS=-g VERSION=us ENABLE_OPENGL=1 THREE_POINT_FILTERING=1",
             "group": "build",
             "problemMatcher": []
         }

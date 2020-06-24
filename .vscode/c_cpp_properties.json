@@ -18,6 +18,7 @@
                 "TARGET_WINDOWS",
                 "NO_SEGMENTED_MEMORY",
                 "ENABLE_DX11",
+                "THREE_POINT_FILTERING",
                 "WIDESCREEN",
                 "F3DEX_GBI_2E",
                 "__MINGW32__"
