@@ -112,7 +112,7 @@ static void gfx_opengl_load_shader(struct ShaderProgram *new_prg) {
     current_shader_program = new_prg;
     glUseProgram(new_prg->opengl_program_id);
     gfx_opengl_vertex_array_set_attribs(new_prg);
-    gfx_opengl_set_per_program_uniforms(new_prg);
+    gfx_opengl_set_per_program_uniforms();
 }
 
 static void append_str(char *buf, size_t *len, const char *str) {
@@ -456,9 +456,11 @@ static struct ShaderProgram *gfx_opengl_create_and_load_new_shader(uint32_t shad
     }
 
 #ifdef THREE_POINT_FILTERING
-    prg->texture_width_location = glGetUniformLocation(shader_program, "texture_width");
-    prg->texture_height_location = glGetUniformLocation(shader_program, "texture_height");
-    prg->texture_linear_filtering_location = glGetUniformLocation(shader_program, "texture_linear_filtering");
+    if (cc_features.used_textures[0] || cc_features.used_textures[1]) {
+        prg->texture_width_location = glGetUniformLocation(shader_program, "texture_width");
+        prg->texture_height_location = glGetUniformLocation(shader_program, "texture_height");
+        prg->texture_linear_filtering_location = glGetUniformLocation(shader_program, "texture_linear_filtering");
+    }
 #endif
 
     return prg;

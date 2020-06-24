@@ -323,7 +323,7 @@ static struct ShaderProgram *gfx_d3d11_create_and_load_new_shader(uint32_t shade
 #ifdef THREE_POINT_FILTERING
     bool three_point_filtering = true;
 #else
-    bool three_point_filtering = true;
+    bool three_point_filtering = false;
 #endif
 
     gfx_direct3d_common_build_shader(buf, len, num_floats, cc_features, false, three_point_filtering);
