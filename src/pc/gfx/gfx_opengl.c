@@ -28,6 +28,8 @@
 #include "gfx_cc.h"
 #include "gfx_rendering_api.h"
 
+#define THREE_POINT_FILTERING 1
+
 struct ShaderProgram {
     uint32_t shader_id;
     GLuint opengl_program_id;
@@ -40,14 +42,20 @@ struct ShaderProgram {
     bool used_noise;
     GLint frame_count_location;
     GLint window_height_location;
+    GLint texture_linear_filtering_location;
 };
 
 static struct ShaderProgram shader_program_pool[64];
+static struct ShaderProgram *current_shader_program;
 static uint8_t shader_program_pool_size;
 static GLuint opengl_vbo;
 
 static uint32_t frame_count;
 static uint32_t current_height;
+#if THREE_POINT_FILTERING
+static bool textures_linear_filtering[1024];
+static GLuint current_texture_ids[2];
+#endif
 
 static bool gfx_opengl_z_is_from_0_to_1(void) {
     return false;
@@ -64,11 +72,20 @@ static void gfx_opengl_vertex_array_set_attribs(struct ShaderProgram *prg) {
     }
 }
 
-static void gfx_opengl_set_uniforms(struct ShaderProgram *prg) {
-    if (prg->used_noise) {
-        glUniform1i(prg->frame_count_location, frame_count);
-        glUniform1i(prg->window_height_location, current_height);
+static void gfx_opengl_set_per_program_uniforms() {
+    if (current_shader_program->used_noise) {
+        glUniform1i(current_shader_program->frame_count_location, frame_count);
+        glUniform1i(current_shader_program->window_height_location, current_height);
     }
+}
+
+static void gfx_opengl_set_per_draw_uniforms() {
+#if THREE_POINT_FILTERING
+    if (current_shader_program->used_textures[0] || current_shader_program->used_textures[1]) {
+        GLint filtering[2] = { textures_linear_filtering[current_texture_ids[0]], textures_linear_filtering[current_texture_ids[1]] };
+        glUniform1iv(current_shader_program->texture_linear_filtering_location, 2, &filtering);
+    }
+#endif
 }
 
 static void gfx_opengl_unload_shader(struct ShaderProgram *old_prg) {
@@ -80,9 +97,10 @@ static void gfx_opengl_unload_shader(struct ShaderProgram *old_prg) {
 }
 
 static void gfx_opengl_load_shader(struct ShaderProgram *new_prg) {
+    current_shader_program = new_prg;
     glUseProgram(new_prg->opengl_program_id);
     gfx_opengl_vertex_array_set_attribs(new_prg);
-    gfx_opengl_set_uniforms(new_prg);
+    gfx_opengl_set_per_program_uniforms(new_prg);
 }
 
 static void append_str(char *buf, size_t *len, const char *str) {
@@ -169,13 +187,13 @@ static struct ShaderProgram *gfx_opengl_create_and_load_new_shader(uint32_t shad
     gfx_cc_get_features(shader_id, &cc_features);
 
     char vs_buf[1024];
-    char fs_buf[1024];
+    char fs_buf[2048];
     size_t vs_len = 0;
     size_t fs_len = 0;
     size_t num_floats = 4;
 
     // Vertex shader
-    append_line(vs_buf, &vs_len, "#version 110");
+    append_line(vs_buf, &vs_len, "#version 130");
     append_line(vs_buf, &vs_len, "attribute vec4 aVtxPos;");
     if (cc_features.used_textures[0] || cc_features.used_textures[1]) {
         append_line(vs_buf, &vs_len, "attribute vec2 aTexCoord;");
@@ -206,7 +224,7 @@ static struct ShaderProgram *gfx_opengl_create_and_load_new_shader(uint32_t shad
     append_line(vs_buf, &vs_len, "}");
 
     // Fragment shader
-    append_line(fs_buf, &fs_len, "#version 110");
+    append_line(fs_buf, &fs_len, "#version 130");
     //append_line(fs_buf, &fs_len, "precision mediump float;");
     if (cc_features.used_textures[0] || cc_features.used_textures[1]) {
         append_line(fs_buf, &fs_len, "varying vec2 vTexCoord;");
@@ -234,13 +252,45 @@ static struct ShaderProgram *gfx_opengl_create_and_load_new_shader(uint32_t shad
         append_line(fs_buf, &fs_len, "}");
     }
 
+#if THREE_POINT_FILTERING
+    if (cc_features.used_textures[0] || cc_features.used_textures[1]) {
+        append_line(fs_buf, &fs_len, "uniform bool texture_linear_filtering[2];");
+        append_line(fs_buf, &fs_len, "#define TEX_OFFSET(tex, texCoord, off, texSize) texture2D(tex, texCoord - off / texSize)");
+        append_line(fs_buf, &fs_len, "vec4 tex2D3PointFilter(in sampler2D tex, in vec2 texCoord) {");
+        append_line(fs_buf, &fs_len, "    ivec2 texSize = textureSize(tex, 0);");
+        append_line(fs_buf, &fs_len, "    vec2 offset = fract(texCoord * texSize - vec2(0.5, 0.5));");
+        append_line(fs_buf, &fs_len, "    offset -= step(1.0, offset.x + offset.y);");
+        append_line(fs_buf, &fs_len, "    vec4 c0 = TEX_OFFSET(tex, texCoord, offset, texSize);");
+        append_line(fs_buf, &fs_len, "    vec4 c1 = TEX_OFFSET(tex, texCoord, vec2(offset.x - sign(offset.x), offset.y), texSize);");
+        append_line(fs_buf, &fs_len, "    vec4 c2 = TEX_OFFSET(tex, texCoord, vec2(offset.x, offset.y - sign(offset.y)), texSize);");
+        append_line(fs_buf, &fs_len, "    return c0 + abs(offset.x)*(c1-c0) + abs(offset.y)*(c2-c0);");
+        append_line(fs_buf, &fs_len, "}");
+    }
+#endif
+
     append_line(fs_buf, &fs_len, "void main() {");
 
     if (cc_features.used_textures[0]) {
+#if THREE_POINT_FILTERING
+        append_line(fs_buf, &fs_len, "    vec4 texVal0;");
+        append_line(fs_buf, &fs_len, "    if (texture_linear_filtering[0])");
+        append_line(fs_buf, &fs_len, "        texVal0 = tex2D3PointFilter(uTex0, vTexCoord);");
+        append_line(fs_buf, &fs_len, "    else");
+        append_line(fs_buf, &fs_len, "        texVal0 = texture2D(uTex0, vTexCoord);");
+#else
         append_line(fs_buf, &fs_len, "vec4 texVal0 = texture2D(uTex0, vTexCoord);");
+#endif
     }
     if (cc_features.used_textures[1]) {
+#if THREE_POINT_FILTERING
+        append_line(fs_buf, &fs_len, "    vec4 texVal1;");
+        append_line(fs_buf, &fs_len, "    if (texture_linear_filtering[1])");
+        append_line(fs_buf, &fs_len, "        texVal1 = tex2D3PointFilter(uTex1, vTexCoord);");
+        append_line(fs_buf, &fs_len, "    else");
+        append_line(fs_buf, &fs_len, "        texVal1 = texture2D(uTex1, vTexCoord);");
+#else
         append_line(fs_buf, &fs_len, "vec4 texVal1 = texture2D(uTex1, vTexCoord);");
+#endif
     }
 
     append_str(fs_buf, &fs_len, cc_features.opt_alpha ? "vec4 texel = " : "vec3 texel = ");
@@ -378,6 +428,10 @@ static struct ShaderProgram *gfx_opengl_create_and_load_new_shader(uint32_t shad
         prg->used_noise = false;
     }
 
+#if THREE_POINT_FILTERING
+    prg->texture_linear_filtering_location = glGetUniformLocation(shader_program, "texture_linear_filtering");
+#endif
+
     return prg;
 }
 
@@ -405,6 +459,9 @@ static GLuint gfx_opengl_new_texture(void) {
 static void gfx_opengl_select_texture(int tile, GLuint texture_id) {
     glActiveTexture(GL_TEXTURE0 + tile);
     glBindTexture(GL_TEXTURE_2D, texture_id);
+#if THREE_POINT_FILTERING
+    current_texture_ids[tile] = texture_id;
+#endif
 }
 
 static void gfx_opengl_upload_texture(const uint8_t *rgba32_buf, int width, int height) {
@@ -420,8 +477,15 @@ static uint32_t gfx_cm_to_opengl(uint32_t val) {
 
 static void gfx_opengl_set_sampler_parameters(int tile, bool linear_filter, uint32_t cms, uint32_t cmt) {
     glActiveTexture(GL_TEXTURE0 + tile);
+
+#if THREE_POINT_FILTERING
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    textures_linear_filtering[current_texture_ids[tile]] = linear_filter;
+#else
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, linear_filter ? GL_LINEAR : GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, linear_filter ? GL_LINEAR : GL_NEAREST);
+#endif
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, gfx_cm_to_opengl(cms));
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, gfx_cm_to_opengl(cmt));
 }
@@ -467,6 +531,7 @@ static void gfx_opengl_set_use_alpha(bool use_alpha) {
 
 static void gfx_opengl_draw_triangles(float buf_vbo[], size_t buf_vbo_len, size_t buf_vbo_num_tris) {
     //printf("flushing %d tris\n", buf_vbo_num_tris);
+    gfx_opengl_set_per_draw_uniforms();
     glBufferData(GL_ARRAY_BUFFER, sizeof(float) * buf_vbo_len, buf_vbo, GL_STREAM_DRAW);
     glDrawArrays(GL_TRIANGLES, 0, 3 * buf_vbo_num_tris);
 }
