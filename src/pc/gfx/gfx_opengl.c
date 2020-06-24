@@ -40,8 +40,8 @@ struct ShaderProgram {
     uint8_t attrib_sizes[7];
     uint8_t num_attribs;
     bool used_noise;
-    GLint frame_count_location;
-    GLint window_height_location;
+    GLint noise_frame_location;
+    GLint noise_scale_location;
     GLint texture_linear_filtering_location;
 };
 
@@ -50,8 +50,8 @@ static struct ShaderProgram *current_shader_program;
 static uint8_t shader_program_pool_size;
 static GLuint opengl_vbo;
 
-static uint32_t frame_count;
-static uint32_t current_height;
+static uint32_t noise_frame;
+static float noise_scale[2];
 #if THREE_POINT_FILTERING
 static bool textures_linear_filtering[1024];
 static GLuint current_texture_ids[2];
@@ -74,8 +74,8 @@ static void gfx_opengl_vertex_array_set_attribs(struct ShaderProgram *prg) {
 
 static void gfx_opengl_set_per_program_uniforms() {
     if (current_shader_program->used_noise) {
-        glUniform1i(current_shader_program->frame_count_location, frame_count);
-        glUniform1i(current_shader_program->window_height_location, current_height);
+        glUniform1i(current_shader_program->noise_frame_location, noise_frame);
+        glUniform2f(current_shader_program->noise_scale_location, noise_scale[0], noise_scale[1]);
     }
 }
 
@@ -210,6 +210,9 @@ static struct ShaderProgram *gfx_opengl_create_and_load_new_shader(uint32_t shad
         vs_len += sprintf(vs_buf + vs_len, "varying vec%d vInput%d;\n", cc_features.opt_alpha ? 4 : 3, i + 1);
         num_floats += cc_features.opt_alpha ? 4 : 3;
     }
+    if (cc_features.opt_alpha && cc_features.opt_noise) {
+        append_line(vs_buf, &vs_len, "varying vec4 screenPos;");
+    }
     append_line(vs_buf, &vs_len, "void main() {");
     if (cc_features.used_textures[0] || cc_features.used_textures[1]) {
         append_line(vs_buf, &vs_len, "vTexCoord = aTexCoord;");
@@ -219,6 +222,9 @@ static struct ShaderProgram *gfx_opengl_create_and_load_new_shader(uint32_t shad
     }
     for (int i = 0; i < cc_features.num_inputs; i++) {
         vs_len += sprintf(vs_buf + vs_len, "vInput%d = aInput%d;\n", i + 1, i + 1);
+    }
+    if (cc_features.opt_alpha && cc_features.opt_noise) {
+        append_line(vs_buf, &vs_len, "screenPos = aVtxPos;");
     }
     append_line(vs_buf, &vs_len, "gl_Position = aVtxPos;");
     append_line(vs_buf, &vs_len, "}");
@@ -235,6 +241,9 @@ static struct ShaderProgram *gfx_opengl_create_and_load_new_shader(uint32_t shad
     for (int i = 0; i < cc_features.num_inputs; i++) {
         fs_len += sprintf(fs_buf + fs_len, "varying vec%d vInput%d;\n", cc_features.opt_alpha ? 4 : 3, i + 1);
     }
+    if (cc_features.opt_alpha && cc_features.opt_noise) {
+        append_line(fs_buf, &fs_len, "varying vec4 screenPos;");
+    }
     if (cc_features.used_textures[0]) {
         append_line(fs_buf, &fs_len, "uniform sampler2D uTex0;");
     }
@@ -243,11 +252,11 @@ static struct ShaderProgram *gfx_opengl_create_and_load_new_shader(uint32_t shad
     }
 
     if (cc_features.opt_alpha && cc_features.opt_noise) {
-        append_line(fs_buf, &fs_len, "uniform int frame_count;");
-        append_line(fs_buf, &fs_len, "uniform int window_height;");
+        append_line(fs_buf, &fs_len, "uniform int noise_frame;");
+        append_line(fs_buf, &fs_len, "uniform vec2 noise_scale;");
 
         append_line(fs_buf, &fs_len, "float random(in vec3 value) {");
-        append_line(fs_buf, &fs_len, "    float random = dot(sin(value), vec3(12.9898, 78.233, 37.719));");
+        append_line(fs_buf, &fs_len, "    float random = dot(value, vec3(12.9898, 78.233, 37.719));");
         append_line(fs_buf, &fs_len, "    return fract(sin(random) * 143758.5453);");
         append_line(fs_buf, &fs_len, "}");
     }
@@ -318,7 +327,8 @@ static struct ShaderProgram *gfx_opengl_create_and_load_new_shader(uint32_t shad
     }
 
     if (cc_features.opt_alpha && cc_features.opt_noise) {
-        append_line(fs_buf, &fs_len, "texel.a *= floor(random(vec3(floor(gl_FragCoord.xy * (240.0 / float(window_height))), float(frame_count))) + 0.5);");
+        append_line(fs_buf, &fs_len, "vec2 coords = (screenPos.xy / screenPos.w) * noise_scale;");
+        append_line(fs_buf, &fs_len, "texel.a *= floor(random(vec3(floor(coords), float(noise_frame))) + 0.5);");
     }
 
     if (cc_features.opt_alpha) {
@@ -421,8 +431,8 @@ static struct ShaderProgram *gfx_opengl_create_and_load_new_shader(uint32_t shad
     }
 
     if (cc_features.opt_alpha && cc_features.opt_noise) {
-        prg->frame_count_location = glGetUniformLocation(shader_program, "frame_count");
-        prg->window_height_location = glGetUniformLocation(shader_program, "window_height");
+        prg->noise_frame_location = glGetUniformLocation(shader_program, "noise_frame");
+        prg->noise_scale_location = glGetUniformLocation(shader_program, "noise_scale");
         prg->used_noise = true;
     } else {
         prg->used_noise = false;
@@ -514,7 +524,10 @@ static void gfx_opengl_set_zmode_decal(bool zmode_decal) {
 
 static void gfx_opengl_set_viewport(int x, int y, int width, int height) {
     glViewport(x, y, width, height);
-    current_height = height;
+
+    float aspect_ratio = (float) width / (float) height;
+    noise_scale[0] = 120 * aspect_ratio; // 120 = N64 height resolution (240) / 2
+    noise_scale[1] = 120;
 }
 
 static void gfx_opengl_set_scissor(int x, int y, int width, int height) {
@@ -553,7 +566,11 @@ static void gfx_opengl_on_resize(void) {
 }
 
 static void gfx_opengl_start_frame(void) {
-    frame_count++;
+    noise_frame++;
+    if (noise_frame > 150) {
+        // No high values, as noise starts to look ugly
+        noise_frame = 0;
+    }
 
     glDisable(GL_SCISSOR_TEST);
     glDepthMask(GL_TRUE); // Must be set to clear Z-buffer
