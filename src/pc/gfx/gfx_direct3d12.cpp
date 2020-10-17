@@ -609,8 +609,8 @@ static void gfx_direct3d12_start_frame(void) {
         d3d.noise_cb_data.noise_frame = 0;
     }
     float aspect_ratio = (float) d3d.current_width / (float) d3d.current_height;
-    d3d.noise_cb_data.noise_scale_x = 120 * aspect_ratio; // 120 = N64 height resolution (240) / 2
-    d3d.noise_cb_data.noise_scale_y = 120;
+    d3d.noise_cb_data.noise_scale_x = 120 * aspect_ratio * NOISE_SIZE_MULTIPLIER; // 120 = N64 height resolution (240) / 2
+    d3d.noise_cb_data.noise_scale_y = 120 * NOISE_SIZE_MULTIPLIER;
     memcpy(d3d.mapped_noise_cb_address, &d3d.noise_cb_data, sizeof(struct NoiseCB));
     
     d3d.vbuf_pos = 0;

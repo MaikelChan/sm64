@@ -3363,6 +3363,7 @@ ALIGNED8 static const u8 intro_seg7_texture_0700C4A0[] = {
 const Gfx intro_seg7_dl_0700C6A0[] = {
     gsDPPipeSync(),
     gsDPSetCombineMode(G_CC_DECALFADE, G_CC_DECALFADE),
+    gsDPSetTextureFilter(G_TF_POINT),
     gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
 
     gsDPLoadTextureBlock(intro_seg7_texture_0700B4A0, G_IM_FMT_RGBA, G_IM_SIZ_16b, 128, 16, 0, G_TX_CLAMP, G_TX_CLAMP, 7, 4, G_TX_NOLOD, G_TX_NOLOD),

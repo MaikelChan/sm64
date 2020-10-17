@@ -28,6 +28,8 @@
 #include "gfx_cc.h"
 #include "gfx_rendering_api.h"
 
+#include "gfx_screen_config.h"
+
 struct ShaderProgram {
     uint32_t shader_id;
     GLuint opengl_program_id;
@@ -552,8 +554,8 @@ static void gfx_opengl_set_viewport(int x, int y, int width, int height) {
     glViewport(x, y, width, height);
 
     float aspect_ratio = (float) width / (float) height;
-    noise_scale[0] = 120 * aspect_ratio; // 120 = N64 height resolution (240) / 2
-    noise_scale[1] = 120;
+    noise_scale[0] = 120 * aspect_ratio * NOISE_SIZE_MULTIPLIER; // 120 = N64 height resolution (240) / 2
+    noise_scale[1] = 120 * NOISE_SIZE_MULTIPLIER;
 }
 
 static void gfx_opengl_set_scissor(int x, int y, int width, int height) {
