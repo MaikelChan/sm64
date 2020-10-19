@@ -1,0 +1,27 @@
+{
+    "configurations": [
+        {
+            "name": "US 3DS",
+            "includePath": [
+                "${workspaceFolder}",
+                "${workspaceFolder}/include",
+                "${workspaceFolder}/src",
+                "${workspaceFolder}/build/us_3ds",
+                "${workspaceFolder}/build/us_3ds/include"
+            ],
+            "defines": [
+                "_LANGUAGE_C",
+                "VERSION_US",
+                "NON_MATCHING",
+                "AVOID_UB",
+                "TARGET_N3DS",
+                "ARM11",
+                "_3DS",
+                "NO_SEGMENTED_MEMORY",
+                "WIDESCREEN",
+                "F3DEX_GBI_2E"
+            ]
+        }
+    ],
+    "version": 4
+}
