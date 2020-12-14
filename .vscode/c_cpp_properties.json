@@ -22,6 +22,7 @@
                 "WIDESCREEN",
                 "THREE_POINT_FILTERING",
                 "F3DEX_GBI_2E",
+                "GBI_FLOATS",
                 "__MINGW32__"
             ]
         }
