@@ -99,6 +99,13 @@ void produce_one_frame(void) {
     gfx_end_frame();
 }
 
+void game_exit(void) {
+    gfx_shutdown();
+#ifndef TARGET_WEB
+    exit(0);
+#endif
+}
+
 #ifdef TARGET_WEB
 static void em_main_loop(void) {
 }

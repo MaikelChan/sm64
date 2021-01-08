@@ -78,6 +78,9 @@ static double gfx_dummy_wm_get_time(void) {
     return 0.0;
 }
 
+static void gfx_dummy_shutdown(void) {
+}
+
 static bool gfx_dummy_renderer_z_is_from_0_to_1(void) {
     return false;
 }
@@ -136,6 +139,9 @@ static void gfx_dummy_renderer_set_use_alpha(bool use_alpha) {
 static void gfx_dummy_renderer_draw_triangles(float buf_vbo[], size_t buf_vbo_len, size_t buf_vbo_num_tris) {
 }
 
+static void gfx_dummy_renderer_get_framebuffer(uint16_t *buffer) {
+}
+
 static void gfx_dummy_renderer_init(void) {
 }
 
@@ -151,6 +157,9 @@ static void gfx_dummy_renderer_end_frame(void) {
 static void gfx_dummy_renderer_finish_render(void) {
 }
 
+static void gfx_dummy_renderer_shutdown(void) {
+}
+
 struct GfxWindowManagerAPI gfx_dummy_wm_api = {
     gfx_dummy_wm_init,
     gfx_dummy_wm_set_keyboard_callbacks,
@@ -162,7 +171,8 @@ struct GfxWindowManagerAPI gfx_dummy_wm_api = {
     gfx_dummy_wm_start_frame,
     gfx_dummy_wm_swap_buffers_begin,
     gfx_dummy_wm_swap_buffers_end,
-    gfx_dummy_wm_get_time
+    gfx_dummy_wm_get_time,
+    gfx_dummy_shutdown
 };
 
 struct GfxRenderingAPI gfx_dummy_renderer_api = {
@@ -183,10 +193,12 @@ struct GfxRenderingAPI gfx_dummy_renderer_api = {
     gfx_dummy_renderer_set_scissor,
     gfx_dummy_renderer_set_use_alpha,
     gfx_dummy_renderer_draw_triangles,
+    gfx_dummy_renderer_get_framebuffer,
     gfx_dummy_renderer_init,
     gfx_dummy_renderer_on_resize,
     gfx_dummy_renderer_start_frame,
     gfx_dummy_renderer_end_frame,
-    gfx_dummy_renderer_finish_render
+    gfx_dummy_renderer_finish_render,
+    gfx_dummy_renderer_shutdown
 };
 #endif

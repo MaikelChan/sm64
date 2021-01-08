@@ -19,6 +19,8 @@
 #include <SDL2/SDL_opengles2.h>
 #endif
 
+#include "../pc_main.h"
+
 #include "gfx_window_manager_api.h"
 #include "gfx_screen_config.h"
 
@@ -257,7 +259,8 @@ static void gfx_sdl_handle_events(void) {
                 }
                 break;
             case SDL_QUIT:
-                exit(0);
+                game_exit();
+                break;
         }
     }
 }
@@ -303,6 +306,9 @@ static double gfx_sdl_get_time(void) {
     return 0.0;
 }
 
+static void gfx_sdl_shutdown(void) {
+}
+
 struct GfxWindowManagerAPI gfx_sdl = {
     gfx_sdl_init,
     gfx_sdl_set_keyboard_callbacks,
@@ -314,7 +320,8 @@ struct GfxWindowManagerAPI gfx_sdl = {
     gfx_sdl_start_frame,
     gfx_sdl_swap_buffers_begin,
     gfx_sdl_swap_buffers_end,
-    gfx_sdl_get_time
+    gfx_sdl_get_time,
+    gfx_sdl_shutdown
 };
 
 #endif

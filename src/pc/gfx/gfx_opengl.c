@@ -577,6 +577,9 @@ static void gfx_opengl_draw_triangles(float buf_vbo[], size_t buf_vbo_len, size_
     glDrawArrays(GL_TRIANGLES, 0, 3 * buf_vbo_num_tris);
 }
 
+static void gfx_opengl_get_framebuffer(uint16_t *buffer) {
+}
+
 static void gfx_opengl_init(void) {
 #if FOR_WINDOWS
     glewInit();
@@ -613,6 +616,9 @@ static void gfx_opengl_end_frame(void) {
 static void gfx_opengl_finish_render(void) {
 }
 
+static void gfx_opengl_shutdown(void) {
+}
+
 struct GfxRenderingAPI gfx_opengl_api = {
     gfx_opengl_z_is_from_0_to_1,
     gfx_opengl_unload_shader,
@@ -631,11 +637,13 @@ struct GfxRenderingAPI gfx_opengl_api = {
     gfx_opengl_set_scissor,
     gfx_opengl_set_use_alpha,
     gfx_opengl_draw_triangles,
+    gfx_opengl_get_framebuffer,
     gfx_opengl_init,
     gfx_opengl_on_resize,
     gfx_opengl_start_frame,
     gfx_opengl_end_frame,
-    gfx_opengl_finish_render
+    gfx_opengl_finish_render,
+    gfx_opengl_shutdown
 };
 
 #endif

@@ -20,6 +20,8 @@
 #endif
 #include <PR/gbi.h>
 
+#include "../pc_main.h"
+
 #include "gfx_window_manager_api.h"
 #include "gfx_rendering_api.h"
 #include "gfx_direct3d_common.h"
@@ -225,7 +227,8 @@ static LRESULT CALLBACK gfx_dxgi_wnd_proc(HWND h_wnd, UINT message, WPARAM w_par
             gfx_dxgi_on_resize();
             break;
         case WM_DESTROY:
-            exit(0);
+            game_exit();
+            break;
         case WM_PAINT:
             if (dxgi.showing_error || IsIconic(h_wnd)) {
                 return DefWindowProcW(h_wnd, message, w_param, l_param);
@@ -517,6 +520,9 @@ static double gfx_dxgi_get_time(void) {
     return (double)(t.QuadPart - dxgi.qpc_init) / dxgi.qpc_freq;
 }
 
+void gfx_dxgi_shutdown(void) {
+}
+
 void gfx_dxgi_create_factory_and_device(bool debug, int d3d_version, bool (*create_device_fn)(IDXGIAdapter1 *adapter, bool test_only)) {
     if (dxgi.CreateDXGIFactory2 != nullptr) {
         ThrowIfFailed(dxgi.CreateDXGIFactory2(debug ? DXGI_CREATE_FACTORY_DEBUG : 0, __uuidof(IDXGIFactory2), &dxgi.factory));
@@ -618,6 +624,7 @@ struct GfxWindowManagerAPI gfx_dxgi_api = {
     gfx_dxgi_swap_buffers_begin,
     gfx_dxgi_swap_buffers_end,
     gfx_dxgi_get_time,
+    gfx_dxgi_shutdown
 };
 
 #endif

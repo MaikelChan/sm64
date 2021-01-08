@@ -34,7 +34,6 @@
 #define RATIO_X (gfx_current_dimensions.width / (2.0f * HALF_SCREEN_WIDTH))
 #define RATIO_Y (gfx_current_dimensions.height / (2.0f * HALF_SCREEN_HEIGHT))
 
-#define MAX_BUFFERED 256
 #define MAX_LIGHTS 2
 #define MAX_VERTICES 64
 
@@ -62,6 +61,8 @@ struct TextureHashmapNode {
     uint32_t texture_id;
     uint8_t cms, cmt;
     bool linear_filter;
+
+    uint32_t checksum;
 };
 static struct {
     struct TextureHashmapNode *hashmap[1024];
@@ -151,12 +152,15 @@ struct GfxDimensions gfx_current_dimensions;
 
 static bool dropped_frame;
 
-static float buf_vbo[MAX_BUFFERED * (26 * 3)]; // 3 vertices in a triangle and 26 floats per vtx
+static float buf_vbo[VERTEX_BUFFER_SIZE];
 static size_t buf_vbo_len;
 static size_t buf_vbo_num_tris;
 
 static struct GfxWindowManagerAPI *gfx_wapi;
 static struct GfxRenderingAPI *gfx_rapi;
+
+static uint16_t *framebuffer_data;
+static bool requested_framebuffer;
 
 #include <time.h>
 static unsigned long get_time(void) {
@@ -253,12 +257,12 @@ static struct ColorCombiner *gfx_lookup_or_create_color_combiner(uint32_t cc_id)
     return prev_combiner = comb;
 }
 
-static bool gfx_texture_cache_lookup(int tile, struct TextureHashmapNode **n, const uint8_t *orig_addr, uint32_t fmt, uint32_t siz) {
+static bool gfx_texture_cache_lookup(int tile, struct TextureHashmapNode **n, const uint8_t *orig_addr, uint32_t fmt, uint32_t siz, uint32_t checksum) {
     size_t hash = (uintptr_t)orig_addr;
     hash = (hash >> 5) & 0x3ff;
     struct TextureHashmapNode **node = &gfx_texture_cache.hashmap[hash];
     while (*node != NULL && *node - gfx_texture_cache.pool < (int)gfx_texture_cache.pool_pos) {
-        if ((*node)->texture_addr == orig_addr && (*node)->fmt == fmt && (*node)->siz == siz) {
+        if ((*node)->texture_addr == orig_addr && (*node)->fmt == fmt && (*node)->siz == siz && (*node)->checksum == checksum) {
             gfx_rapi->select_texture(tile, (*node)->texture_id);
             *n = *node;
             return true;
@@ -284,6 +288,7 @@ static bool gfx_texture_cache_lookup(int tile, struct TextureHashmapNode **n, co
     (*node)->texture_addr = orig_addr;
     (*node)->fmt = fmt;
     (*node)->siz = siz;
+    (*node)->checksum = checksum;
     *n = *node;
     return false;
 }
@@ -468,14 +473,26 @@ static void import_texture_ci8(int tile) {
     gfx_rapi->upload_texture(rgba32_buf, width, height);
 }
 
+uint32_t calculate_checksum(const uint8_t *data, uint32_t count) {
+    uint32_t sum = 0;
+
+    for (uint32_t i = 0; i < count; i++) {
+        sum = (sum + data[i] + i) & 0xFFFFFFFF;
+    }
+
+    return sum;
+}
+
 static void import_texture(int tile) {
     uint8_t fmt = rdp.texture_tile.fmt;
     uint8_t siz = rdp.texture_tile.siz;
-    
-    if (gfx_texture_cache_lookup(tile, &rendering_state.textures[tile], rdp.loaded_texture[tile].addr, fmt, siz)) {
+
+    uint32_t checksum = calculate_checksum(rdp.loaded_texture[tile].addr, rdp.loaded_texture[tile].size_bytes);
+
+    if (gfx_texture_cache_lookup(tile, &rendering_state.textures[tile], rdp.loaded_texture[tile].addr, fmt, siz, checksum)) {
         return;
     }
-    
+
     int t0 = get_time();
     if (fmt == G_IM_FMT_RGBA) {
         if (siz == G_IM_SIZ_16b) {
@@ -924,7 +941,7 @@ static void gfx_sp_tri1(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t vtx3_idx) {
         buf_vbo[buf_vbo_len++] = color->b / 255.0f;
         buf_vbo[buf_vbo_len++] = color->a / 255.0f;*/
     }
-    if (++buf_vbo_num_tris == MAX_BUFFERED) {
+    if (++buf_vbo_num_tris == MAX_BUFFERED_TRIANGLES) {
         gfx_flush();
     }
 }
@@ -1604,16 +1621,29 @@ static void gfx_sp_reset() {
     rsp.lights_changed = true;
 }
 
-void gfx_get_dimensions(uint32_t *width, uint32_t *height) {
-    gfx_wapi->get_dimensions(width, height);
+void gfx_update_dimensions() {
+    gfx_wapi->get_dimensions(&gfx_current_dimensions.width, &gfx_current_dimensions.height);
+
+    if (gfx_current_dimensions.height == 0) {
+        // Avoid division by zero
+        gfx_current_dimensions.height = 1;
+    }
+
+    gfx_current_dimensions.aspect_ratio = (float) gfx_current_dimensions.width / (float) gfx_current_dimensions.height;
 }
 
 void gfx_init(struct GfxWindowManagerAPI *wapi, struct GfxRenderingAPI *rapi, const char *game_name, bool start_in_fullscreen) {
     gfx_wapi = wapi;
-    gfx_rapi = rapi;
     gfx_wapi->init(game_name, start_in_fullscreen);
+
+    gfx_update_dimensions();
+
+    gfx_rapi = rapi;
     gfx_rapi->init();
-    
+
+    framebuffer_data = NULL;
+    requested_framebuffer = false;
+
     // Used in the 120 star TAS
     static uint32_t precomp_shaders[] = {
         0x01200200,
@@ -1652,14 +1682,22 @@ struct GfxRenderingAPI *gfx_get_current_rendering_api(void) {
     return gfx_rapi;
 }
 
+uint16_t *get_framebuffer() {
+    if (!requested_framebuffer) {
+        if (framebuffer_data == NULL) {
+            framebuffer_data = (uint16_t *) malloc(FRAMEBUFFER_WIDTH * FRAMEBUFFER_HEIGHT * sizeof(uint16_t));
+        }
+
+        gfx_get_current_rendering_api()->get_framebuffer(framebuffer_data);
+        requested_framebuffer = true;
+    }
+
+    return framebuffer_data;
+}
+
 void gfx_start_frame(void) {
     gfx_wapi->handle_events();
-    gfx_wapi->get_dimensions(&gfx_current_dimensions.width, &gfx_current_dimensions.height);
-    if (gfx_current_dimensions.height == 0) {
-        // Avoid division by zero
-        gfx_current_dimensions.height = 1;
-    }
-    gfx_current_dimensions.aspect_ratio = (float)gfx_current_dimensions.width / (float)gfx_current_dimensions.height;
+    gfx_update_dimensions();
 }
 
 void gfx_run(Gfx *commands) {
@@ -1687,5 +1725,21 @@ void gfx_end_frame(void) {
     if (!dropped_frame) {
         gfx_rapi->finish_render();
         gfx_wapi->swap_buffers_end();
+        requested_framebuffer = false;
+    }
+}
+
+void gfx_shutdown(void) {
+    if (gfx_rapi) {
+        if (gfx_rapi->shutdown) gfx_rapi->shutdown();
+        gfx_rapi = NULL;
+    }
+    if (gfx_wapi) {
+        if (gfx_wapi->shutdown) gfx_wapi->shutdown();
+        gfx_wapi = NULL;
+    }
+    if (framebuffer_data) {
+        free(framebuffer_data);
+        framebuffer_data = NULL;
     }
 }

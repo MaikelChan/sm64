@@ -625,6 +625,9 @@ static double gfx_glx_get_time(void) {
     return 0.0;
 }
 
+static void gfx_glx_shutdown(void) {
+}
+
 struct GfxWindowManagerAPI gfx_glx = {
     gfx_glx_init,
     gfx_glx_set_keyboard_callbacks,
@@ -636,7 +639,8 @@ struct GfxWindowManagerAPI gfx_glx = {
     gfx_glx_start_frame,
     gfx_glx_swap_buffers_begin,
     gfx_glx_swap_buffers_end,
-    gfx_glx_get_time
+    gfx_glx_get_time,
+    gfx_glx_shutdown
 };
 
 #endif

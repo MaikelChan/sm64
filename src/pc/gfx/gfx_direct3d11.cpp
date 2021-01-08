@@ -677,6 +677,9 @@ static void gfx_d3d11_on_resize(void) {
     create_render_target_views(true);
 }
 
+static void gfx_d3d11_get_framebuffer(uint16_t *buffer) {
+}
+
 static void gfx_d3d11_start_frame(void) {
     // Set render targets
 
@@ -712,6 +715,8 @@ static void gfx_d3d11_end_frame(void) {
 static void gfx_d3d11_finish_render(void) {
 }
 
+static void gfx_d3d11_shutdown() {
+}
 } // namespace
 
 struct GfxRenderingAPI gfx_direct3d11_api = {
@@ -732,11 +737,13 @@ struct GfxRenderingAPI gfx_direct3d11_api = {
     gfx_d3d11_set_scissor,
     gfx_d3d11_set_use_alpha,
     gfx_d3d11_draw_triangles,
+    gfx_d3d11_get_framebuffer,
     gfx_d3d11_init,
     gfx_d3d11_on_resize,
     gfx_d3d11_start_frame,
     gfx_d3d11_end_frame,
-    gfx_d3d11_finish_render
+    gfx_d3d11_finish_render,
+    gfx_d3d11_shutdown,
 };
 
 #endif
