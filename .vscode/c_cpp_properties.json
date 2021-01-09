@@ -25,6 +25,32 @@
                 "GBI_FLOATS",
                 "__MINGW32__"
             ]
+        },
+        {
+            "name": "US PC OpenGL",
+            "includePath": [
+                "${workspaceFolder}",
+                "${workspaceFolder}/include",
+                "${workspaceFolder}/src",
+                "${workspaceFolder}/build/us_pc",
+                "${workspaceFolder}/build/us_pc/include",
+                "C:/msys64/mingw64/include"
+            ],
+            "defines": [
+                "_LANGUAGE_C",
+                "VERSION_US",
+                "NON_MATCHING",
+                "AVOID_UB",
+                "TARGET_WINDOWS",
+                "NO_SEGMENTED_MEMORY",
+                "USE_SYSTEM_MALLOC",
+                "ENABLE_OPENGL",
+                "WIDESCREEN",
+                "THREE_POINT_FILTERING",
+                "F3DEX_GBI_2E",
+                "GBI_FLOATS",
+                "__MINGW32__"
+            ]
         }
     ],
     "version": 4
