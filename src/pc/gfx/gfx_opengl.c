@@ -88,6 +88,10 @@ static struct ShaderProgram rt_shader_program;
 
 static GLuint opengl_vbo;
 
+static GLuint framebuffer_pbo;
+static bool framebuffer_requested;
+static uint16_t *framebuffer_data;
+
 // Current values
 
 static uint32_t current_width;
@@ -884,23 +888,10 @@ static void gfx_opengl_get_framebuffer(uint16_t *buffer) {
     if (USE_FRAMEBUFFER) {
         bind_render_target(&framebuffer_rt);
 
-        uint8_t pixels[FRAMEBUFFER_WIDTH * FRAMEBUFFER_HEIGHT * 4];
-        glReadPixels(0, 0, FRAMEBUFFER_WIDTH, FRAMEBUFFER_HEIGHT, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+        glReadPixels(0, 0, FRAMEBUFFER_WIDTH, FRAMEBUFFER_HEIGHT, GL_RGBA, GL_UNSIGNED_BYTE, 0);
 
-        uint32_t bi = 0;
-        for (int32_t y = FRAMEBUFFER_HEIGHT - 1; y >= 0; y--) {
-            for (int32_t x = 0; x < FRAMEBUFFER_WIDTH; x++) {
-                uint32_t fb_pixel = (y * FRAMEBUFFER_WIDTH + x) * 4;
-
-                uint8_t r = pixels[fb_pixel + 0] >> 3;
-                uint8_t g = pixels[fb_pixel + 1] >> 3;
-                uint8_t b = pixels[fb_pixel + 2] >> 3;
-                uint8_t a = 1; //pixels[fb_pixel + 3] / 255;
-
-                buffer[bi] = (r << 11) | (g << 6) | (b << 1) | a;
-                bi++;
-            }
-        }
+        framebuffer_requested = true;
+        framebuffer_data = buffer;
     }
 }
 
@@ -948,6 +939,12 @@ static void gfx_opengl_init(void) {
     glGenBuffers(1, &opengl_vbo);
     glBindBuffer(GL_ARRAY_BUFFER, opengl_vbo);
     glBufferData(GL_ARRAY_BUFFER, VERTEX_BUFFER_SIZE * sizeof(float), NULL, GL_DYNAMIC_DRAW);
+
+    // Pixel buffer object to asynchronously read the framebuffer
+
+    glGenBuffers(1, &framebuffer_pbo);
+    glBindBuffer(GL_PIXEL_PACK_BUFFER, framebuffer_pbo);
+    glBufferData(GL_PIXEL_PACK_BUFFER, FRAMEBUFFER_WIDTH * FRAMEBUFFER_HEIGHT * 4, NULL, GL_DYNAMIC_READ);
 
     // Initialize misc states
 
@@ -1004,6 +1001,31 @@ static void gfx_opengl_end_frame(void) {
         // of the next frame, if they use the same shader as the ones before.
 
         gfx_opengl_load_shader(current_shader_program);
+
+        if (framebuffer_requested) {
+            GLubyte *pixels = (GLubyte *) glMapBuffer(GL_PIXEL_PACK_BUFFER, GL_READ_ONLY);
+
+            if (pixels != NULL) {
+                uint32_t bi = 0;
+                for (int32_t y = FRAMEBUFFER_HEIGHT - 1; y >= 0; y--) {
+                    for (int32_t x = 0; x < FRAMEBUFFER_WIDTH; x++) {
+                        uint32_t fb_pixel = (y * FRAMEBUFFER_WIDTH + x) * 4;
+
+                        uint8_t r = pixels[fb_pixel + 0] >> 3;
+                        uint8_t g = pixels[fb_pixel + 1] >> 3;
+                        uint8_t b = pixels[fb_pixel + 2] >> 3;
+                        uint8_t a = 1; //pixels[fb_pixel + 3] / 255;
+
+                        framebuffer_data[bi] = (r << 11) | (g << 6) | (b << 1) | a;
+                        bi++;
+                    }
+                }
+
+                glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
+            }
+
+            framebuffer_requested = false;
+        }
     }
 }
 
