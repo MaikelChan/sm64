@@ -257,6 +257,55 @@ static struct ColorCombiner *gfx_lookup_or_create_color_combiner(uint32_t cc_id)
     return prev_combiner = comb;
 }
 
+#define ADLER_BASE 65521U
+#define ADLER_NMAX 5552
+
+#define ADLER_DO1(buf,i) {adler += (buf)[i]; sum2 += adler;}
+#define ADLER_DO2(buf,i) ADLER_DO1(buf,i); ADLER_DO1(buf,i+1);
+#define ADLER_DO4(buf,i) ADLER_DO2(buf,i); ADLER_DO2(buf,i+2);
+#define ADLER_DO8(buf,i) ADLER_DO4(buf,i); ADLER_DO4(buf,i+4);
+#define ADLER_DO16(buf)  ADLER_DO8(buf,0); ADLER_DO8(buf,8);
+
+uint32_t calculate_checksum(const uint8_t *buf, size_t len) {
+    uint32_t adler = 1;
+    uint32_t sum2;
+    unsigned n;
+
+    /* split Adler-32 into component sums */
+    sum2 = (adler >> 16) & 0xffff;
+    adler &= 0xffff;
+
+    /* do length ADLER_NMAX blocks -- requires just one modulo operation */
+    while (len >= ADLER_NMAX) {
+        len -= ADLER_NMAX;
+        n = ADLER_NMAX / 16; /* ADLER_NMAX is divisible by 16 */
+        do {
+            ADLER_DO16(buf); /* 16 sums unrolled */
+            buf += 16;
+        } while (--n);
+        adler %= ADLER_BASE;
+        sum2 %= ADLER_BASE;
+    }
+
+    /* do remaining bytes (less than ADLER_NMAX, still just one modulo) */
+    if (len) { /* avoid modulos if none remaining */
+        while (len >= 16) {
+            len -= 16;
+            ADLER_DO16(buf);
+            buf += 16;
+        }
+        while (len--) {
+            adler += *buf++;
+            sum2 += adler;
+        }
+        adler %= ADLER_BASE;
+        sum2 %= ADLER_BASE;
+    }
+
+    /* return recombined sums */
+    return adler | (sum2 << 16);
+}
+
 static bool gfx_texture_cache_lookup(int tile, struct TextureHashmapNode **n, const uint8_t *orig_addr, uint32_t fmt, uint32_t siz, uint32_t checksum) {
     size_t hash = (uintptr_t)orig_addr;
     hash = (hash >> 5) & 0x3ff;
@@ -427,7 +476,6 @@ static void import_texture_i8(int tile) {
     gfx_rapi->upload_texture(rgba32_buf, width, height);
 }
 
-
 static void import_texture_ci4(int tile) {
     uint8_t rgba32_buf[32768];
     
@@ -471,16 +519,6 @@ static void import_texture_ci8(int tile) {
     uint32_t height = rdp.loaded_texture[tile].size_bytes / rdp.texture_tile.line_size_bytes;
     
     gfx_rapi->upload_texture(rgba32_buf, width, height);
-}
-
-uint32_t calculate_checksum(const uint8_t *data, uint32_t count) {
-    uint32_t sum = 0;
-
-    for (uint32_t i = 0; i < count; i++) {
-        sum = (sum + data[i] + i) & 0xFFFFFFFF;
-    }
-
-    return sum;
 }
 
 static void import_texture(int tile) {
