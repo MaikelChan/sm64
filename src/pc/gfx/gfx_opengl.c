@@ -368,7 +368,7 @@ static void create_render_target(uint32_t width, uint32_t height, bool is_resizi
     render_target->height = height;
 }
 
-static void draw_render_target(const struct RenderTarget *dst_render_target, const struct RenderTarget *src_render_target, bool clear_before_drawing) {
+static void draw_render_target(const struct RenderTarget *dst_render_target, const struct RenderTarget *src_render_target, bool fullscreen) {
     // Set render target
 
     uint32_t dst_width, dst_height;
@@ -392,10 +392,6 @@ static void draw_render_target(const struct RenderTarget *dst_render_target, con
     set_viewport(0, 0, dst_width, dst_height);
     set_scissor(0, 0, dst_width, dst_height);
 
-    if (clear_before_drawing) {
-        glClear(GL_COLOR_BUFFER_BIT);
-    }
-
     // Set color texture
 
     set_active_texture(0);
@@ -403,23 +399,34 @@ static void draw_render_target(const struct RenderTarget *dst_render_target, con
 
     // Set vertex buffer data
 
-    float dst_aspect = (float) dst_width / (float) dst_height;
-    float src_aspect = (float) src_render_target->width / (float) src_render_target->height;
-    float w = src_aspect / dst_aspect;
-
-    float buf_vbo[] = {
-        -w, +1.0, 0.0, 1.0,
-        -w, -1.0, 0.0, 0.0,
-        +w, +1.0, 1.0, 1.0,
-        +w, -1.0, 1.0, 0.0
-    };
-
     uint32_t stride = 2 * 2 * sizeof(float);
-    set_vertex_buffer(buf_vbo, 4 * stride);
 
-    // Draw the quad
+    if (fullscreen) {
+        float buf_vbo[] = {
+            -1, +3.0, 0.0, 2.0,
+            -1, -1.0, 0.0, 0.0,
+            +3, -1.0, 2.0, 0.0
+        };
 
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+        set_vertex_buffer(buf_vbo, 3 * stride);
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 3);
+    } else {
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        float dst_aspect = (float) dst_width / (float) dst_height;
+        float src_aspect = (float) src_render_target->width / (float) src_render_target->height;
+        float w = src_aspect / dst_aspect;
+
+        float buf_vbo[] = {
+            -w, +1.0, 0.0, 1.0,
+            -w, -1.0, 0.0, 0.0,
+            +w, +1.0, 1.0, 1.0,
+            +w, -1.0, 1.0, 0.0
+        };
+
+        set_vertex_buffer(buf_vbo, 4 * stride);
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    }
 }
 
 static void create_render_target_views(bool is_resize) {
@@ -993,8 +1000,8 @@ static void gfx_opengl_end_frame(void) {
 
         // Draw quad with main render target into the other render targets
 
-        draw_render_target(NULL, &main_rt, false);
-        draw_render_target(&framebuffer_rt, &main_rt, true);
+        draw_render_target(NULL, &main_rt, true);
+        draw_render_target(&framebuffer_rt, &main_rt, false);
 
         // Set again the last shader used before drawing render targets.
         // Not doing so can lead to rendering issues on the first drawcalls
