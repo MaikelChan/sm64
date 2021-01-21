@@ -477,15 +477,10 @@ static void create_render_target(uint32_t width, uint32_t height, bool has_depth
     }
 }
 
-static void draw_render_target(const RenderTarget *dst_render_target, const RenderTarget *src_render_target, bool clear_before_drawing) {
+static void draw_render_target(const RenderTarget *dst_render_target, const RenderTarget *src_render_target, bool fullscreen) {
     // Set render target
 
     d3d.context->OMSetRenderTargets(1, dst_render_target->render_target_view.GetAddressOf(), NULL);
-
-    if (clear_before_drawing) {
-        const float clearColor[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-        d3d.context->ClearRenderTargetView(dst_render_target->render_target_view.Get(), clearColor);
-    }
 
     // Disable depth buffer
 
@@ -497,29 +492,46 @@ static void draw_render_target(const RenderTarget *dst_render_target, const Rend
     set_viewport(0, 0, dst_render_target->texture_data.width, dst_render_target->texture_data.height);
     set_scissor(0, 0, dst_render_target->texture_data.width, dst_render_target->texture_data.height);
 
-    // Set vertex buffer data
-
-    float rt_aspect = (float) dst_render_target->texture_data.width / (float) dst_render_target->texture_data.height;
-    float current_aspect = (float) d3d.current_width / (float) d3d.current_height;
-    float w = current_aspect / rt_aspect;
-
-    float buf_vbo[] = {
-        -w, +1.0, 0.0, 0.0,
-        -w, -1.0, 0.0, 1.0,
-        +w, +1.0, 1.0, 0.0,
-        +w, -1.0, 1.0, 1.0
-    };
-
-    uint32_t stride = 2 * 2 * sizeof(float);
-    set_vertex_buffer(buf_vbo, 4 * stride, stride);
-
     // Set shader stuff
 
     set_shader(&d3d.rt_shader_program);
     set_shader_resources(0, &src_render_target->texture_data);
     set_primitive_topology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 
-    d3d.context->Draw(4, 0);
+    // Set vertex buffer data
+
+    const uint32_t stride = 2 * 2 * sizeof(float);
+
+    if (fullscreen) {
+        float buf_vbo[] = {
+            -1, +3.0, 0.0, -1.0,
+            -1, -1.0, 0.0, 1.0,
+            +3, -1.0, 2.0, 1.0
+        };
+
+        set_vertex_buffer(buf_vbo, 3 * stride, stride);
+        d3d.context->Draw(3, 0);
+    } else {
+        const float clearColor[] = { 0.0f, 0.0f, 0.0f, 1.0f };
+        d3d.context->ClearRenderTargetView(dst_render_target->render_target_view.Get(), clearColor);
+
+        float rt_aspect = (float) dst_render_target->texture_data.width / (float) dst_render_target->texture_data.height;
+        float current_aspect = (float) d3d.current_width / (float) d3d.current_height;
+        float w = current_aspect / rt_aspect;
+
+        float buf_vbo[] = {
+            -w, +1.0, 0.0, 0.0,
+            -w, -1.0, 0.0, 1.0,
+            +w, +1.0, 1.0, 0.0,
+            +w, -1.0, 1.0, 1.0
+        };
+
+        set_vertex_buffer(buf_vbo, 4 * stride, stride);
+        d3d.context->Draw(4, 0);
+    }
+
+    // Make sure the src_render_target is not bound as shader resource view after using it.
+    // It could be used as render target later, and it cannot be bound to both places at the same time.
 
     set_shader_resources(0, nullptr);
 }
@@ -1026,8 +1038,10 @@ static void gfx_d3d11_start_frame(void) {
 }
 
 static void gfx_d3d11_end_frame(void) {
-    draw_render_target(&d3d.backbuffer_rt, &d3d.main_rt, false);
-    draw_render_target(&d3d.framebuffer_rt, &d3d.main_rt, true);
+    draw_render_target(&d3d.backbuffer_rt, &d3d.main_rt, true);
+    draw_render_target(&d3d.framebuffer_rt, &d3d.main_rt, false);
+
+    // Get the framebuffer from GPU if requested
 
     if (d3d.framebuffer_requested) {
         D3D11_MAPPED_SUBRESOURCE ms;
