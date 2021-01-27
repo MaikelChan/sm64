@@ -175,6 +175,7 @@ static const char *rt_shader =
     "}\n";
 
 static LARGE_INTEGER last_time, accumulated_time, frequency;
+static const float clear_color[] = { 0.0f, 0.0f, 0.0f, 1.0f };
 
 static ComPtr<ID3DBlob> compile_shader(const char *vertex_shader, size_t vertex_shader_length, const char *fragment_shader, size_t fragment_shader_length, ShaderProgramD3D11 *shader_program) {
     ComPtr<ID3DBlob> vs, ps, error_blob;
@@ -207,7 +208,7 @@ static ComPtr<ID3DBlob> compile_shader(const char *vertex_shader, size_t vertex_
     return vs;
 }
 
-static void set_vertex_buffer(float buffer[], size_t buffer_length, uint32_t stride) {
+static void set_vertex_buffer(const float buffer[], size_t buffer_length, uint32_t stride) {
     D3D11_MAPPED_SUBRESOURCE ms;
     ZeroMemory(&ms, sizeof(D3D11_MAPPED_SUBRESOURCE));
 
@@ -477,7 +478,7 @@ static void create_render_target(uint32_t width, uint32_t height, bool has_depth
     }
 }
 
-static void draw_render_target(const RenderTarget *dst_render_target, const RenderTarget *src_render_target, bool fullscreen) {
+static void draw_render_target(const RenderTarget *dst_render_target, const RenderTarget *src_render_target, bool clear) {
     // Set render target
 
     d3d.context->OMSetRenderTargets(1, dst_render_target->render_target_view.GetAddressOf(), NULL);
@@ -489,46 +490,37 @@ static void draw_render_target(const RenderTarget *dst_render_target, const Rend
 
     // Viewport and Scissor
 
-    set_viewport(0, 0, dst_render_target->texture_data.width, dst_render_target->texture_data.height);
+    float aspect_ratio = (float) src_render_target->texture_data.width / (float) src_render_target->texture_data.height;
+    int32_t width = dst_render_target->texture_data.height * aspect_ratio;
+    int32_t height = dst_render_target->texture_data.height;
+    int32_t x = (width - (int32_t) dst_render_target->texture_data.width) * -0.5;
+
+    set_viewport(x, 0, width, height);
     set_scissor(0, 0, dst_render_target->texture_data.width, dst_render_target->texture_data.height);
+
+    // Clear
+
+    if (clear) {
+        d3d.context->ClearRenderTargetView(dst_render_target->render_target_view.Get(), clear_color);
+    }
 
     // Set shader stuff
 
     set_shader(&d3d.rt_shader_program);
     set_shader_resources(0, &src_render_target->texture_data);
-    set_primitive_topology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 
     // Set vertex buffer data
 
+    const float buf_vbo[] = {
+        -1, +3.0, +0.0, -1.0,
+        -1, -1.0, +0.0, +1.0,
+        +3, -1.0, +2.0, +1.0
+    };
+
     const uint32_t stride = 2 * 2 * sizeof(float);
-
-    if (fullscreen) {
-        float buf_vbo[] = {
-            -1, +3.0, 0.0, -1.0,
-            -1, -1.0, 0.0, 1.0,
-            +3, -1.0, 2.0, 1.0
-        };
-
-        set_vertex_buffer(buf_vbo, 3 * stride, stride);
-        d3d.context->Draw(3, 0);
-    } else {
-        const float clearColor[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-        d3d.context->ClearRenderTargetView(dst_render_target->render_target_view.Get(), clearColor);
-
-        float rt_aspect = (float) dst_render_target->texture_data.width / (float) dst_render_target->texture_data.height;
-        float current_aspect = (float) d3d.current_width / (float) d3d.current_height;
-        float w = current_aspect / rt_aspect;
-
-        float buf_vbo[] = {
-            -w, +1.0, 0.0, 0.0,
-            -w, -1.0, 0.0, 1.0,
-            +w, +1.0, 1.0, 0.0,
-            +w, -1.0, 1.0, 1.0
-        };
-
-        set_vertex_buffer(buf_vbo, 4 * stride, stride);
-        d3d.context->Draw(4, 0);
-    }
+    set_vertex_buffer(buf_vbo, 3 * stride, stride);
+    set_primitive_topology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+    d3d.context->Draw(3, 0);
 
     // Make sure the src_render_target is not bound as shader resource view after using it.
     // It could be used as render target later, and it cannot be bound to both places at the same time.
@@ -1014,8 +1006,7 @@ static void gfx_d3d11_start_frame(void) {
 
     // Clear render targets
 
-    const float clearColor[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-    d3d.context->ClearRenderTargetView(d3d.main_rt.render_target_view.Get(), clearColor);
+    d3d.context->ClearRenderTargetView(d3d.main_rt.render_target_view.Get(), clear_color);
     d3d.context->ClearDepthStencilView(d3d.main_rt.depth_stencil_view.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
 
     // Set per-frame constant buffer
@@ -1038,8 +1029,8 @@ static void gfx_d3d11_start_frame(void) {
 }
 
 static void gfx_d3d11_end_frame(void) {
-    draw_render_target(&d3d.backbuffer_rt, &d3d.main_rt, true);
-    draw_render_target(&d3d.framebuffer_rt, &d3d.main_rt, false);
+    draw_render_target(&d3d.backbuffer_rt, &d3d.main_rt, false);
+    draw_render_target(&d3d.framebuffer_rt, &d3d.main_rt, true);
 
     // Get the framebuffer from GPU if requested
 
