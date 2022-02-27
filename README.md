@@ -6,7 +6,7 @@ A prior copy of the game is required to extract the assets.
 ## Changes vs. Vanilla 3DS Port
 
  - Based off [Refresh 11](https://github.com/sm64-port/sm64-port/commit/9214dddabcce4723d9b6cda2ebccbac209f6447d)
- - Stereo 3D support; use the mini-menu to switch between 3D (400px) and 800px modes
+ - Stereo 3D support; use the mini-menu to switch between 3D (400px) and 800px modes (800PX/AA disabled in 3D mode)
  - Multi-threaded; audio thread runs on Core 1 on O3DS and Core 2 on N3DS; needs [Luma v10.1.1](https://github.com/LumaTeam/Luma3DS/releases) or higher
  - Naïve frame-skip if frame takes longer than 33.3ms (1 / 30 FPS) to render
      - Disable by building with `DISABLE_N3DS_FRAMESKIP=1`
@@ -17,6 +17,7 @@ A prior copy of the game is required to extract the assets.
      - Enable/disable AA
      - Enable/disable 800px mode
      - Exit the game
+ - Touch-screen camera controls similar to SM64DS
  - Support injection of [SMDH](https://www.3dbrew.org/wiki/SMDH) file into the .3dsx
      - Change the `3ds/icon.png` in the base of this repository before building.
  - To change the CIA banner, modify the `3ds/icon.png` and `3ds/banner.png` and use [bannertool](https://github.com/Steveice10/bannertool/releases/tag/1.2.0) to generate new `icon.icn` and `banner.bnr` respectively.
@@ -34,7 +35,7 @@ After building, either install the `.cia` if you made one, or copy over the `sm6
   - [Linux / WSL (Ubuntu 18.04 or higher)](#linux--wsl-ubuntu)
   - [Windows (MSYS2)](#windows-msys2)
 
-Visit the [wiki](https://github.com/mkst/sm64-port/wiki) for information on converting the `.3dsx` to `.cia` via WSL/MSYS2.
+Visit the [wiki](https://github.com/mkst/sm64-port/wiki) for information.
 
 ### Docker
 
