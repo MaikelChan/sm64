@@ -17,7 +17,7 @@ A prior copy of the game is required to extract the assets.
 
 1. Install prerequisites: `sudo apt install -y build-essential git binutils-mips-linux-gnu python3`
 2. Clone the repo from within Linux: `git clone https://github.com/n64decomp/sm64.git`
-3. Place a Super Mario 64 ROM called `baserom.<VERSION>.z64` into the project folder for asset extraction, where `VERSION` can be `us`, `jp`, or `eu`.
+3. Place a Super Mario 64 ROM called `baserom.<VERSION>.z64` into the project folder for asset extraction, where `VERSION` can be `us`, `jp`, `eu`, or `sh`.
 4. Run `make` to build. Qualify the version through `make VERSION=<VERSION>`. Add `-j4` to improve build speed (hardware dependent).
 
 Ensure the repo path length does not exceed 255 characters. Long path names result in build errors.
@@ -79,7 +79,7 @@ You may also use [Docker](#docker-installation) to handle installing an image wi
 
 #### Step 2: Copy baserom(s) for asset extraction
 
-For each version (jp/us/eu) for which you want to build a ROM, put an existing ROM at
+For each version (jp/us/eu/sh) for which you want to build a ROM, put an existing ROM at
 `./baserom.<VERSION>.z64` for asset extraction.
 
 ##### Step 3: Build the ROM
@@ -95,10 +95,10 @@ Resulting artifacts can be found in the `build` directory.
 
 The full list of configurable variables are listed below, with the default being the first listed:
 
-* ``VERSION``: ``us``, ``jp``, ``eu``, ``sh`` (WIP)
+* ``VERSION``: ``us``, ``jp``, ``eu``, ``sh``
 * ``GRUCODE``: ``f3d_old``, ``f3d_new``, ``f3dex``, ``f3dex2``, ``f3dzex``
 * ``COMPARE``: ``1`` (compare ROM hash), ``0`` (do not compare ROM hash)
-* ``NON_MATCHING``: Use functionally equivalent C implementations for non-matchings (Currently there aren't any non-matchings, but this will apply to Shindou and iQue). Also will avoid instances of undefined behavior.
+* ``NON_MATCHING``: Use functionally equivalent C implementations for non-matchings (Currently there aren't any non-matchings, but this will apply to iQue). Also will avoid instances of undefined behavior.
 * ``CROSS``: Cross-compiler tool prefix (Example: ``mips64-elf-``).
 
 ### macOS
@@ -111,12 +111,12 @@ With macOS, you may either use Homebrew or [Docker](#docker-installation).
 Install [Homebrew](https://brew.sh) and the following dependencies:
 ```
 brew update
-brew install capstone coreutils gcc make pkg-config tehzz/n64-dev/mips64-elf-binutils
+brew install capstone coreutils make pkg-config tehzz/n64-dev/mips64-elf-binutils
 ```
 
 #### Step 2: Copy baserom(s) for asset extraction
 
-For each version (jp/us/eu) for which you want to build a ROM, put an existing ROM at
+For each version (jp/us/eu/sh) for which you want to build a ROM, put an existing ROM at
 `./baserom.<VERSION>.z64` for asset extraction.
 
 ##### Step 3: Build the ROM
