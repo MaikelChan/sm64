@@ -7,6 +7,8 @@
 #include <fcntl.h>
 #include "vadpcm.h"
 
+#ifdef __sgi
+
 static void int_handler(s32 sig)
 {
     s32 flags;
@@ -16,10 +18,6 @@ static void int_handler(s32 sig)
     fcntl(STDIN_FILENO, F_SETFL, flags);
     exit(0);
 }
-
-static char usage[] = "bitfile";
-
-#ifdef __sgi
 
 // Declaring a sigaction like this is wildly unportable; you're supposed to
 // assign members one by one in code. We do that in the non-SGI case.
@@ -31,6 +29,8 @@ static struct sigaction int_act = {
 
 #endif
 
+static char usage[] = "bitfile";
+
 s32 main(s32 argc, char **argv)
 {
     s32 c;
@@ -40,7 +40,9 @@ s32 main(s32 argc, char **argv)
     s16 version;
     s16 nloops;
     s16 npredictors;
+#ifdef __sgi
     s32 flags;
+#endif
     s32 ***coefTable = NULL;
     s32 i;
     s32 j;
@@ -226,17 +228,17 @@ s32 main(s32 argc, char **argv)
     fseek(ifile, soundPointer, SEEK_SET);
     if (doloop && nloops > 0)
     {
-#ifndef __sgi
+#ifdef __sgi
         struct sigaction int_act;
         int_act.sa_flags = SA_RESTART;
         int_act.sa_handler = int_handler;
         sigemptyset(&int_act.sa_mask);
-#endif
-
+        
         sigaction(SIGINT, &int_act, NULL);
         flags = fcntl(STDIN_FILENO, F_GETFL, 0);
         flags |= FNDELAY;
         fcntl(STDIN_FILENO, F_SETFL, flags);
+#endif
         for (i = 0; i < nloops; i++)
         {
             while (currPos < aloops[i].end)
@@ -280,10 +282,11 @@ s32 main(s32 argc, char **argv)
                 writeout(stdout, left < 16 ? left : 16, outp, outp, 1);
                 currPos += 16;
             }
-
+#ifdef __sgi
             flags = fcntl(STDIN_FILENO, F_GETFL, 0);
             flags &= ~FNDELAY;
             fcntl(STDIN_FILENO, F_SETFL, flags);
+#endif
         }
     }
     else
